@@ -1,9 +1,8 @@
 const mongoose = require('../DB');
 
 const presentationsSchema = new mongoose.Schema({
-    title: { type: String, required: true },
-    authors: [String],
-    dateOfPublishment: Date,
+    title: { type: String, required: true, unique: true }, authors: [String],
+    dateOfPublishment: { type: Date, default: Date.now },
     slides: [Number]
 })
 
@@ -16,9 +15,9 @@ async function getPresentation(title) {
         title = title.replace(/^"|"$/g, '');
         const result = await presentationModel.find({ title: title });
         console.log(result);
-        if (result.length == 0)
+        if (!result || result.length == 0)
             throw new Error("cannot find presentation");
-        return result;
+        return result[0];
     } catch (error) {
         console.error("Error:", error);
         throw error;
@@ -36,17 +35,10 @@ async function getAllPresentations() {
     }
 }
 
-async function createPresentation(body) {
+async function getPresentationsBySlide(slide_id) {
     try {
-        const { title, authors, dateOfPublishment, slides } = body;
-        console.log(body);
-        const result = await presentationModel.create({
-            title: title,
-            authors: authors,
-            dateOfPublishment: dateOfPublishment,
-            slides: slides
-        });
-        console.log("Data saved successfully:", result);
+        const result = await presentationModel.find({slides: slide_id});
+        console.log(result);
         return result;
     } catch (error) {
         console.error("Error:", error);
@@ -54,10 +46,31 @@ async function createPresentation(body) {
     }
 }
 
-async function deleltePresentation(key) {
+async function createPresentation(body) {
     try {
-        key = key.replace(/^"|"$/g, '');
-        const result = await presentationModel.deleteOne({ title: key });
+        const { title, authors, slides } = body;
+        console.log(body);
+        const result = await presentationModel.create({
+            title: title,
+            authors: authors,
+            slides: slides
+        });
+        console.log("Data saved successfully:", result);
+        return result;
+    } catch (error) {
+        if (error.code === 11000)
+            console.error('Title already exists');
+        else {
+            console.error("Error:", error);
+        }
+        throw error;
+    }
+}
+
+async function deleltePresentation(title) {
+    try {
+        title = title.replace(/^"|"$/g, '');
+        const result = await presentationModel.deleteOne({ title: title });
         console.log(result);
         return result;
     } catch (error) {
@@ -81,6 +94,35 @@ async function addSlide(title, slide_id) {
     }
 }
 
+async function removeSlide(title, slide_id) {
+    try {
+        title = title.replace(/^"|"$/g, '');
+        const result = await presentationModel.updateOne(
+            { title: title },
+            { $pull: { slides: slide_id } }
+        );
+        console.log(result);
+        return result;
+    } catch (error) {
+        console.error("Error:", error);
+        throw error;
+    }
+}
+
+async function updateAuthors(title, authors) {
+    try {
+        title = title.replace(/^"|"$/g, '');
+        const result = await presentationModel.updateOne(
+            { title: title },
+            { authors: authors }
+        );
+        console.log(result);
+        return result;
+    } catch (error) {
+        console.error("Error:", error);
+        throw error;
+    }
+}
 
 
-module.exports = { getPresentation, createPresentation, getAllPresentations, deleltePresentation, addSlide }
+module.exports = { getPresentation, createPresentation, getAllPresentations, getPresentationsBySlide, deleltePresentation, addSlide,removeSlide, updateAuthors }
